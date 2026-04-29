@@ -18,9 +18,14 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      target: dev
     container_name: obe_frontend
     ports:
       - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
     environment:
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=obe-v1-jwt-secret-32-chars-minimum-do-not-use-in-production
@@ -41,6 +46,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: obe_backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     environment:
