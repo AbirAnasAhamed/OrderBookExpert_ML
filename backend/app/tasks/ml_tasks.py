@@ -44,13 +44,23 @@ def trigger_model_training(self, user_id: int) -> dict:
             if df.empty:
                 return {"status": "failed", "error": "Feature engineering returned empty DataFrame."}
 
-            # 3. Train Model
-            metrics = train_xgboost(df)
+            # 3. Train Models
+            metrics_xgb = train_xgboost(df)
+            
+            # Train LSTM (Sequence length 10)
+            try:
+                from app.services.ml.lstm_training import train_lstm
+                metrics_lstm = train_lstm(df, seq_len=10, epochs=10)
+                logger.info("LSTM training successful")
+            except Exception as e:
+                logger.error(f"LSTM training failed: {e}")
+                metrics_lstm = {"error": str(e)}
             
             return {
                 "status": "success", 
                 "user_id": user_id,
-                "metrics": metrics
+                "metrics_xgb": metrics_xgb,
+                "metrics_lstm": metrics_lstm
             }
 
         except Exception as e:

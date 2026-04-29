@@ -34,6 +34,10 @@ class RiskConfigRequest(BaseModel):
     stop_loss_percent:      float = Field(gt=0,  le=100,     examples=[0.3])
     max_open_trades:        int   = Field(ge=1,  le=50,      examples=[3])
     max_daily_drawdown_pct: float = Field(gt=0,  le=100,     examples=[5.0])
+    
+    is_live_trading:        bool  = Field(default=False)
+    api_key:                Optional[str] = Field(default=None)
+    api_secret:             Optional[str] = Field(default=None)
 
 
 class RiskConfigResponse(RiskConfigRequest):

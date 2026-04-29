@@ -22,10 +22,11 @@ from app.models import user, bot_config, trade, order_book  # noqa: F401
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Silence uvicorn access logs for the /stats endpoint to prevent spam
+# Silence uvicorn access logs for polling endpoints to prevent spam
 class EndpointFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        return record.getMessage().find("/api/v1/scraper/stats") == -1
+        msg = record.getMessage()
+        return msg.find("/api/v1/scraper/stats") == -1 and msg.find("/api/v1/trades") == -1
 
 logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
 

@@ -41,6 +41,11 @@ class BotConfig(Base):
     max_open_trades:         Mapped[int]   = mapped_column(Integer, default=3,    nullable=False)
     max_daily_drawdown_pct:  Mapped[float] = mapped_column(Float, default=5.0,    nullable=False)
 
+    # ── Live Trading Settings ─────────────────────────────────
+    is_live_trading: Mapped[bool]       = mapped_column(Boolean, default=False, nullable=False)
+    api_key:         Mapped[str | None] = mapped_column(String(255), nullable=True)
+    api_secret:      Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     # ── Runtime state ─────────────────────────────────────────
     status:     Mapped[BotStatus] = mapped_column(SAEnum(BotStatus), default=BotStatus.STOPPED, nullable=False)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

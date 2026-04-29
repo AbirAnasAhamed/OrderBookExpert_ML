@@ -48,6 +48,13 @@ class BinanceScraper:
         except Exception as e:
             logger.error(f"Failed to load ML model on scraper start: {e}")
 
+        # Start Execution Engine
+        try:
+            from app.services.trading.engine import engine
+            asyncio.create_task(engine.start())
+        except Exception as e:
+            logger.error(f"Failed to start Execution Engine: {e}")
+
         self._stop_event.clear()
         self._task = asyncio.create_task(self._run_loop())
         logger.info(f"Started Binance scraper for {self.pair}")
@@ -57,6 +64,14 @@ class BinanceScraper:
         self._stop_event.set()
         if self._task:
             self._task.cancel()
+        
+        # Stop Execution Engine
+        try:
+            from app.services.trading.engine import engine
+            asyncio.create_task(engine.stop())
+        except Exception as e:
+            logger.error(f"Failed to stop Execution Engine: {e}")
+            
         logger.info(f"Stopped Binance scraper for {self.pair}")
 
     @property
@@ -142,6 +157,16 @@ class BinanceScraper:
             prediction = predict_realtime(data)
         except Exception as e:
             logger.error(f"Inference integration error: {e}")
+
+        # 4. Trigger Execution Engine
+        try:
+            from app.services.trading.engine import engine
+            if spread > 0 and formatted_asks:
+                mid_price = formatted_asks[0]["price"] - (spread / 2)
+                # Ensure engine evaluates the latest tick in the background without blocking the broadcast
+                asyncio.create_task(engine.process_tick(self.pair_display, mid_price, prediction))
+        except Exception as e:
+            logger.error(f"Execution Engine error: {e}", exc_info=True)
 
         broadcast_msg = {
             "pair": self.pair_display,
