@@ -1,0 +1,38 @@
+{
+  // ── Python Interpreter ─────────────────────────────────────
+  // Points VS Code / Pylance to the backend virtual environment
+  // so all import warnings (fastapi, sqlalchemy, etc.) disappear.
+  "python.defaultInterpreterPath": "${workspaceFolder}/backend/venv/Scripts/python.exe",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/backend"
+  ],
+
+  // ── Pylance Settings ──────────────────────────────────────
+  "python.languageServer": "Pylance",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.autoImportCompletions": true,
+
+  // ── File Associations ─────────────────────────────────────
+  "files.associations": {
+    "*.env": "dotenv",
+    "*.env.local": "dotenv",
+    "*.env.example": "dotenv"
+  },
+
+  // ── Editor ────────────────────────────────────────────────
+  "editor.formatOnSave": true,
+  "editor.tabSize": 2,
+  "[python]": {
+    "editor.tabSize": 4,
+    "editor.defaultFormatter": "ms-python.python"
+  },
+
+  // ── File Excludes ─────────────────────────────────────────
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/venv": true
+  }
+}

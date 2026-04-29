@@ -1,0 +1,135 @@
+# ─────────────────────────────────────────────────────────────
+# OrderBookExpert — Docker Compose
+#
+# Services:
+#   frontend      → Next.js dashboard              (port 3000)
+#   backend       → FastAPI REST + WebSocket        (port 8000)
+#   celery_worker → Background ML tasks
+#   redis         → Celery broker + cache           (port 6379)
+#   timescaledb   → TimescaleDB (PostgreSQL ext.)   (port 5432)
+# ─────────────────────────────────────────────────────────────
+
+services:
+
+  # ──────────────────────────────────────────────────────────
+  # FRONTEND — Next.js Trading Dashboard
+  # ──────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: obe_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=obe-v1-jwt-secret-32-chars-minimum-do-not-use-in-production
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws
+      - INTERNAL_API_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - obe_network
+
+  # ──────────────────────────────────────────────────────────
+  # BACKEND — FastAPI REST API + WebSocket
+  # ──────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: obe_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://obe_user:obe_pass@timescaledb:5432/obe_db
+      - JWT_SECRET_KEY=change-this-in-production-min-32-chars-unique
+      - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60
+      - JWT_REFRESH_TOKEN_EXPIRE_DAYS=7
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - ALLOWED_ORIGINS=http://localhost:3000
+      - DEBUG=false
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app   # Hot-reload in dev mode
+    networks:
+      - obe_network
+
+  # ──────────────────────────────────────────────────────────
+  # CELERY WORKER — Background Tasks (ML retraining, reports)
+  # ──────────────────────────────────────────────────────────
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: obe_celery_worker
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=2 -Q default
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://obe_user:obe_pass@timescaledb:5432/obe_db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+    depends_on:
+      - backend
+      - redis
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+    networks:
+      - obe_network
+
+  # ──────────────────────────────────────────────────────────
+  # REDIS — Celery Broker + Live Data Cache
+  # ──────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: obe_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    networks:
+      - obe_network
+
+  # ──────────────────────────────────────────────────────────
+  # TIMESCALEDB — PostgreSQL + Time-Series Extension
+  # ──────────────────────────────────────────────────────────
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: obe_timescaledb
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER:     obe_user
+      POSTGRES_PASSWORD: obe_pass
+      POSTGRES_DB:       obe_db
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U obe_user -d obe_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - obe_network
+
+# ──────────────────────────────────────────────────────────
+# VOLUMES & NETWORKS
+# ──────────────────────────────────────────────────────────
+volumes:
+  timescaledb_data:
+  redis_data:
+
+networks:
+  obe_network:
+    driver: bridge
