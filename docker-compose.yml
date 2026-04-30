@@ -22,22 +22,20 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      target: dev
+      target: runner          # ← Production build (next build + node server.js)
     container_name: obe_frontend
     ports:
       - "3001:3000"            # ← only public-facing port for this service
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
     environment:
       # Public URLs (used by the browser — must use the host-visible port)
-      - NEXTAUTH_URL=http://localhost:3001
+      - NEXTAUTH_URL=http://217.76.59.171:3001
       - NEXTAUTH_SECRET=obe-v1-jwt-secret-32-chars-minimum-do-not-use-in-production
-      - NEXT_PUBLIC_API_URL=http://localhost:8001
-      - NEXT_PUBLIC_WS_URL=ws://localhost:8001/ws
+      - NEXT_PUBLIC_API_URL=http://217.76.59.171:8001
+      - NEXT_PUBLIC_WS_URL=ws://217.76.59.171:8001/ws
       # Server-side URL (Next.js → backend, stays inside Docker network)
       - INTERNAL_API_URL=http://backend:8000
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
     depends_on:
       - backend
     restart: unless-stopped
