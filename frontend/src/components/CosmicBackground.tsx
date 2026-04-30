@@ -135,7 +135,8 @@ export const StarField = () => {
       `}} />
       <canvas 
         ref={canvasRef} 
-        className="absolute inset-0 pointer-events-none opacity-80"
+        className="fixed inset-0 pointer-events-none opacity-80 z-0"
+        style={{ width: '100vw', height: '100vh' }}
       />
     </>
   )
@@ -155,9 +156,8 @@ export default function CosmicBackground() {
       {/* Dynamic Moving Star Field */}
       <StarField />
       
-      {/* Subtle grid overlay for tech feel */}
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_10%,transparent_100%)]" />
+      {/* Subtle grid overlay for tech feel — pure CSS, no external URL */}
+      <div className="absolute inset-0 [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_10%,transparent_100%)]" style={{backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize: '50px 50px'}} />
     </div>
   )
 }
