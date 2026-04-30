@@ -7,16 +7,14 @@ All cryptographic operations are centralised here for easy auditing.
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from jose import JWTError, jwt
 import bcrypt
+from jose import JWTError, jwt
 
 from app.core.config import settings
-
 
 # ── Password Hashing ──────────────────────────────────────────────────────────
 def hash_password(plain_password: str) -> str:
     """Return a bcrypt hash of the given plain-text password."""
-    # bcrypt requires bytes
     pwd_bytes = plain_password.encode("utf-8")
     salt = bcrypt.gensalt()
     hashed_bytes = bcrypt.hashpw(pwd_bytes, salt)
@@ -25,11 +23,11 @@ def hash_password(plain_password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Return True if plain_password matches the stored bcrypt hash."""
-    pwd_bytes = plain_password.encode("utf-8")
-    hash_bytes = hashed_password.encode("utf-8")
     try:
+        pwd_bytes = plain_password.encode("utf-8")
+        hash_bytes = hashed_password.encode("utf-8")
         return bcrypt.checkpw(pwd_bytes, hash_bytes)
-    except ValueError:
+    except Exception:
         return False
 
 
