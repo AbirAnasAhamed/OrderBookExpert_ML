@@ -55,7 +55,7 @@ export function SystemStatus() {
               <p className="text-sm text-muted-foreground mt-1">
                 {data.scraper
                   ? `${(data.scraper.rows_collected ?? 0).toLocaleString()} rows collected`
-                  : "Listening to Binance L2 Order Book"}
+                  : "Listening to Binance ML Bot Feed"}
               </p>
             </div>
           </div>

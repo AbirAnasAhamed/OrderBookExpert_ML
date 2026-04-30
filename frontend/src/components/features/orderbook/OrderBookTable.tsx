@@ -46,7 +46,7 @@ export function OrderBookTable({ orderBook, isConnected }: { orderBook?: OrderBo
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle>Live L2 Order Book</CardTitle>
+            <CardTitle>Machine Learning Bot Data</CardTitle>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs font-mono">
                 Spread: $0.00
@@ -71,7 +71,7 @@ export function OrderBookTable({ orderBook, isConnected }: { orderBook?: OrderBo
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle>Live L2 Order Book</CardTitle>
+          <CardTitle>Machine Learning Bot Data</CardTitle>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs font-mono">
               Spread: ${spread.toFixed(2)}

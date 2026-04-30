@@ -7,7 +7,7 @@ import CosmicBackground from "@/components/CosmicBackground"
 const FEATURES = [
   {
     icon: BarChart2,
-    title: "Quantum Order Book Analysis",
+    title: "Quantum Machine Learning Bot",
     description: "Real-time visualization of bids and asks. Our engine detects Buy Walls and Sell Walls milliseconds before the crowd, using hyper-dimensional mapping.",
     color: "from-cyan-500/20 to-blue-600/10",
     iconColor: "text-cyan-400",
@@ -124,7 +124,7 @@ export default function LandingPage() {
           <span className="whitespace-nowrap relative inline-block">
             <span className="absolute -inset-2 bg-neutral-100 blur-2xl opacity-[7%] animate-[pulse_3s_ease-in-out_infinite]" />
             <span className="relative bg-gradient-to-b from-white/90 via-neutral-300/80 to-neutral-500/80 bg-clip-text text-transparent drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]">
-              DECODE THE ORDER BOOK
+              MACHINE LEARNING BOT
             </span>
           </span>
           <span className="text-2xl md:text-4xl lg:text-5xl font-mono font-light tracking-widest text-neutral-400/80 uppercase mt-4 block">

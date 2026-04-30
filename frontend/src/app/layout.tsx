@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OrderBookExpert - AI-Powered HFT Trading",
-  description: "ML-based High-Frequency Crypto Trading System using Level 2 Order Book Analysis",
+  title: "Machine Learning Bot - AI-Powered HFT Trading",
+  description: "ML-based High-Frequency Crypto Trading System using Machine Learning Bot Analysis",
 };
 
 export default function RootLayout({

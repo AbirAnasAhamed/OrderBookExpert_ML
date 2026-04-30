@@ -6,9 +6,9 @@ export default function OrderBookPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Order Book & ML Signals</h2>
+        <h2 className="text-3xl font-bold tracking-tight">Machine Learning Bot</h2>
         <p className="text-muted-foreground">
-          Live Level 2 order book with real-time ML inference signals.
+          Live Machine Learning Bot with real-time inference signals.
         </p>
       </div>
       <BotControlPanel />

@@ -33,7 +33,7 @@ class BinanceScraper:
 
         # Stats
         self.rows_collected = 0
-        self.target_rows: int | None = None  # None = unlimited
+        self.target_rows: int | None = 10000  # Default to 10k for fast local testing
 
     def start(self, target_rows: int | None = None):
         """Start the scraper task in the background."""
