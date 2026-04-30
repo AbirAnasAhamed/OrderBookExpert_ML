@@ -1,19 +1,23 @@
-# ─────────────────────────────────────────────────────────────
-# OrderBookExpert — Docker Compose
+# ─────────────────────────────────────────────────────────────────────────────
+# OrderBookExpert — Docker Compose  (VPS deployment, strict port isolation)
 #
-# Services:
-#   frontend      → Next.js dashboard              (port 3000)
-#   backend       → FastAPI REST + WebSocket        (port 8000)
-#   celery_worker → Background ML tasks
-#   redis         → Celery broker + cache           (port 6379)
-#   timescaledb   → TimescaleDB (PostgreSQL ext.)   (port 5432)
-# ─────────────────────────────────────────────────────────────
+# HOST-EXPOSED ports (only what the outside world needs):
+#   frontend      → http://<vps-ip>:3001   (Next.js dashboard)
+#   backend       → http://<vps-ip>:8001   (FastAPI REST + WebSocket)
+#   flower        → http://<vps-ip>:5556   (Celery task monitor)
+#
+# INTERNAL-ONLY (no host ports — zero conflict risk):
+#   redis         → redis:6379      (reachable inside obe_network only)
+#   timescaledb   → timescaledb:5432 (reachable inside obe_network only)
+#   celery_worker → no ports needed  (consumer only)
+# ─────────────────────────────────────────────────────────────────────────────
 
 services:
 
-  # ──────────────────────────────────────────────────────────
+  # ───────────────────────────────────────────────────────────────────────────
   # FRONTEND — Next.js Trading Dashboard
-  # ──────────────────────────────────────────────────────────
+  # Exposed to host on 3001. Talks to backend via internal Docker DNS.
+  # ───────────────────────────────────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
@@ -21,16 +25,18 @@ services:
       target: dev
     container_name: obe_frontend
     ports:
-      - "3000:3000"
+      - "3001:3000"            # ← only public-facing port for this service
     volumes:
       - ./frontend:/app
       - /app/node_modules
       - /app/.next
     environment:
-      - NEXTAUTH_URL=http://localhost:3000
+      # Public URLs (used by the browser — must use the host-visible port)
+      - NEXTAUTH_URL=http://localhost:3001
       - NEXTAUTH_SECRET=obe-v1-jwt-secret-32-chars-minimum-do-not-use-in-production
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws
+      - NEXT_PUBLIC_API_URL=http://localhost:8001
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8001/ws
+      # Server-side URL (Next.js → backend, stays inside Docker network)
       - INTERNAL_API_URL=http://backend:8000
     depends_on:
       - backend
@@ -38,9 +44,10 @@ services:
     networks:
       - obe_network
 
-  # ──────────────────────────────────────────────────────────
+  # ───────────────────────────────────────────────────────────────────────────
   # BACKEND — FastAPI REST API + WebSocket
-  # ──────────────────────────────────────────────────────────
+  # Exposed to host on 8001. All other services it connects to are internal.
+  # ───────────────────────────────────────────────────────────────────────────
   backend:
     build:
       context: ./backend
@@ -48,15 +55,16 @@ services:
     container_name: obe_backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
-      - "8000:8000"
+      - "8001:8000"            # ← only public-facing port for this service
     environment:
+      # Internal Docker DNS names — no host ports needed
       - DATABASE_URL=postgresql+asyncpg://obe_user:obe_pass@timescaledb:5432/obe_db
       - JWT_SECRET_KEY=change-this-in-production-min-32-chars-unique
       - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60
       - JWT_REFRESH_TOKEN_EXPIRE_DAYS=7
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
-      - ALLOWED_ORIGINS=http://localhost:3000
+      - ALLOWED_ORIGINS=http://localhost:3001
       - DEBUG=false
     depends_on:
       timescaledb:
@@ -65,19 +73,21 @@ services:
         condition: service_started
     restart: unless-stopped
     volumes:
-      - ./backend:/app   # Hot-reload in dev mode
+      - ./backend:/app
     networks:
       - obe_network
 
-  # ──────────────────────────────────────────────────────────
-  # CELERY WORKER — Background Tasks (ML retraining, reports)
-  # ──────────────────────────────────────────────────────────
+  # ───────────────────────────────────────────────────────────────────────────
+  # CELERY WORKER — Background ML Tasks
+  # No ports directive — this is a pure consumer, needs no external access.
+  # ───────────────────────────────────────────────────────────────────────────
   celery_worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: obe_celery_worker
     command: celery -A app.celery_app worker --loglevel=info --concurrency=2 -Q default
+    # NO ports: directive — internal worker, zero host exposure
     environment:
       - DATABASE_URL=postgresql+asyncpg://obe_user:obe_pass@timescaledb:5432/obe_db
       - REDIS_URL=redis://redis:6379/0
@@ -91,14 +101,33 @@ services:
     networks:
       - obe_network
 
-  # ──────────────────────────────────────────────────────────
+  # ───────────────────────────────────────────────────────────────────────────
+  # FLOWER — Celery Task Monitor (optional but useful in production)
+  # Exposed to host on 5556.
+  # ───────────────────────────────────────────────────────────────────────────
+  flower:
+    image: mher/flower:2.0
+    container_name: obe_flower
+    command: celery flower --broker=redis://redis:6379/1 --port=5555
+    ports:
+      - "5556:5555"            # ← host 5556 → container 5555
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/1
+    depends_on:
+      - redis
+      - celery_worker
+    restart: unless-stopped
+    networks:
+      - obe_network
+
+  # ───────────────────────────────────────────────────────────────────────────
   # REDIS — Celery Broker + Live Data Cache
-  # ──────────────────────────────────────────────────────────
+  # NO ports directive — accessible only within obe_network via "redis:6379".
+  # ───────────────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: obe_redis
-    ports:
-      - "6379:6379"
+    # NO ports: directive — internal only, not reachable from the host
     volumes:
       - redis_data:/data
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
@@ -106,14 +135,14 @@ services:
     networks:
       - obe_network
 
-  # ──────────────────────────────────────────────────────────
+  # ───────────────────────────────────────────────────────────────────────────
   # TIMESCALEDB — PostgreSQL + Time-Series Extension
-  # ──────────────────────────────────────────────────────────
+  # NO ports directive — accessible only within obe_network via "timescaledb:5432".
+  # ───────────────────────────────────────────────────────────────────────────
   timescaledb:
     image: timescale/timescaledb:latest-pg16
     container_name: obe_timescaledb
-    ports:
-      - "5432:5432"
+    # NO ports: directive — internal only, not reachable from the host
     environment:
       POSTGRES_USER:     obe_user
       POSTGRES_PASSWORD: obe_pass
@@ -129,9 +158,9 @@ services:
     networks:
       - obe_network
 
-# ──────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 # VOLUMES & NETWORKS
-# ──────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 volumes:
   timescaledb_data:
   redis_data:
