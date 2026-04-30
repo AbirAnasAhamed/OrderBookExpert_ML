@@ -29,6 +29,12 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Build-time args for NEXT_PUBLIC_ variables (embedded into JS bundle)
+ARG NEXT_PUBLIC_API_URL=http://217.76.59.171:8001
+ARG NEXT_PUBLIC_WS_URL=ws://217.76.59.171:8001/ws
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
+
 RUN npm run build
 
 # ─────────────────────────────────────────────────────────────────
