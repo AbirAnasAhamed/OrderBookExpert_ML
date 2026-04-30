@@ -33,13 +33,17 @@ class BinanceScraper:
 
         # Stats
         self.rows_collected = 0
-        self.target_rows = 10000
+        self.target_rows: int | None = None  # None = unlimited
 
-    def start(self):
+    def start(self, target_rows: int | None = None):
         """Start the scraper task in the background."""
         if self._task is not None and not self._task.done():
             logger.warning(f"Scraper for {self.pair} is already running.")
             return
+
+        self.target_rows = target_rows  # None = run indefinitely
+        if target_rows:
+            logger.info(f"Scraper target: {target_rows:,} rows. Will auto-stop when reached.")
 
         # Load ML model if available
         try:
@@ -114,6 +118,12 @@ class BinanceScraper:
         )
         self._batch.append(snapshot)
         self.rows_collected += 1
+
+        # ── Auto-stop when target is reached ──────────────────────────────────
+        if self.target_rows is not None and self.rows_collected >= self.target_rows:
+            logger.info(f"🎯 Target of {self.target_rows:,} rows reached! Auto-stopping scraper.")
+            self.stop()
+            return
 
         if len(self._batch) >= self.db_batch_size:
             await self._flush_batch()

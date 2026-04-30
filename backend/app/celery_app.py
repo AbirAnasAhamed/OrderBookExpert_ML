@@ -22,4 +22,10 @@ celery_app.conf.update(
     enable_utc=True,
     task_track_started=True,
     worker_max_tasks_per_child=200,   # Prevent memory leaks in long-running workers
+    beat_schedule={
+        "auto-retrain-every-6h": {
+            "task": "tasks.auto_retrain_job",
+            "schedule": 6 * 60 * 60,   # every 6 hours in seconds
+        },
+    },
 )

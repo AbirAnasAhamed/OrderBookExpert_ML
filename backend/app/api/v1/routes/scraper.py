@@ -23,7 +23,9 @@ class ScraperStatusResponse(BaseModel):
     rows_collected: int    = 0
     data_size_mb:   float  = 0.0
     readiness_pct:  float  = 0.0   # 0–100, based on target_rows
-    target_rows:    int    = 10000
+    target_rows:    int | None = None
+    auto_retrain:   bool   = False
+    next_retrain_h: float | None = None  # hours until next auto-retrain
 
 
 class TargetRowsUpdate(BaseModel):
@@ -32,9 +34,10 @@ class TargetRowsUpdate(BaseModel):
 
 @router.post("/start", response_model=ScraperStatusResponse, summary="Start the L2 data scraper")
 async def start_scraper(
+    target_rows: int | None = None,   # e.g. ?target_rows=10000, None = unlimited
     current_user: User = Depends(get_current_user),
 ) -> ScraperStatusResponse:
-    scraper.start()
+    scraper.start(target_rows=target_rows)
     return ScraperStatusResponse(
         status="running",
         pair=scraper.pair_display,
@@ -84,7 +87,7 @@ async def scraper_stats(
     # Rough estimate of data size: each row ~500 bytes
     data_size_mb = (scraper.rows_collected * 500) / (1024 * 1024)
     # Use dynamic target_rows for readiness
-    readiness = min((scraper.rows_collected / scraper.target_rows) * 100, 100.0) if scraper.target_rows > 0 else 100.0
+    readiness = min((scraper.rows_collected / scraper.target_rows) * 100, 100.0) if (scraper.target_rows is not None and scraper.target_rows > 0) else 100.0
 
     return ScraperStatusResponse(
         status=status_str,
@@ -110,3 +113,29 @@ async def clear_scraper_data(
         return {"status": "success", "message": "All scraper data cleared."}
     except Exception as exc:
         return {"status": "error", "message": str(exc)}
+
+
+@router.get("/auto-retrain-status", summary="Get current auto-retrain setting")
+async def get_auto_retrain_status(
+    current_user: User = Depends(get_current_user),
+):
+    import app.tasks.ml_tasks as ml_tasks
+    return {
+        "auto_retrain_enabled": ml_tasks.auto_retrain_enabled,
+        "interval_hours": 6,
+    }
+
+
+@router.post("/auto-retrain/toggle", summary="Enable or disable auto-retraining")
+async def toggle_auto_retrain(
+    enabled: bool,
+    current_user: User = Depends(get_current_user),
+):
+    """Toggle periodic auto-retraining every 6 hours via Celery Beat."""
+    import app.tasks.ml_tasks as ml_tasks
+    ml_tasks.auto_retrain_enabled = enabled
+    status = "enabled" if enabled else "disabled"
+    return {
+        "auto_retrain_enabled": enabled,
+        "message": f"Auto-retraining {status}. Celery Beat will {'run' if enabled else 'skip'} the next scheduled job.",
+    }

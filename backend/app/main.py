@@ -26,7 +26,11 @@ logger = logging.getLogger(__name__)
 class EndpointFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         msg = record.getMessage()
-        return msg.find("/api/v1/scraper/stats") == -1 and msg.find("/api/v1/trades") == -1
+        return (
+            msg.find("/api/v1/scraper/stats") == -1
+            and msg.find("/api/v1/trades") == -1
+            and msg.find("/api/v1/bot/status") == -1
+        )
 
 logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
 

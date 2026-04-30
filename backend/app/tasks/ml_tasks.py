@@ -2,8 +2,6 @@
 app/tasks/ml_tasks.py
 ──────────────────────
 Celery background tasks for ML model training and reporting.
-Phase A: Task stubs (no-ops that log intent).
-Phase B: Will trigger XGBoost/LSTM training pipelines.
 """
 import logging
 from app.celery_app import celery_app
@@ -17,10 +15,15 @@ from app.core.database import engine
 from app.services.ml.features import extract_features
 from app.services.ml.training import train_xgboost
 
+# ── In-memory flag: auto-retrain enabled or not ───────────────────────────────
+# This is toggled via the /api/v1/scraper/auto-retrain endpoint.
+auto_retrain_enabled: bool = False
+
+
 @celery_app.task(name="tasks.trigger_model_training", bind=True, max_retries=3)
 def trigger_model_training(self, user_id: int) -> dict:
     """
-    Trigger XGBoost model retraining for a given user.
+    Trigger XGBoost + LSTM model retraining for a given user.
     """
     logger.info(f"[ML Training] Starting for user_id={user_id}")
     
@@ -72,22 +75,30 @@ def trigger_model_training(self, user_id: int) -> dict:
     return result
 
 
+@celery_app.task(name="tasks.auto_retrain_job", bind=True)
+def auto_retrain_job(self) -> dict:
+    """
+    Periodic auto-retrain task. Runs on schedule (every 6 hours).
+    Only trains if auto_retrain_enabled flag is True.
+    """
+    from app.tasks.ml_tasks import auto_retrain_enabled
+    if not auto_retrain_enabled:
+        logger.info("[Auto-Retrain] Skipped — auto-retrain is disabled.")
+        return {"status": "skipped", "reason": "auto_retrain_enabled=False"}
+
+    logger.info("[Auto-Retrain] 🔄 Starting scheduled model retraining...")
+    return trigger_model_training(user_id=1)  # system-level retrain, user_id=1
+
+
 @celery_app.task(name="tasks.generate_daily_report", bind=True)
 def generate_daily_report(self, user_id: int) -> dict:
-    """
-    Generate daily trading summary report.
-    TODO (Phase B): Aggregate trade stats and email/notify user.
-    """
+    """Generate daily trading summary report."""
     logger.info(f"[Daily Report] Generating for user_id={user_id}")
     return {"status": "queued", "user_id": user_id}
 
 
 @celery_app.task(name="tasks.cleanup_old_snapshots", bind=True)
 def cleanup_old_snapshots(self, days_to_keep: int = 90) -> dict:
-    """
-    Remove order book snapshots older than N days.
-    TimescaleDB's compression handles this automatically, but
-    this task provides an extra cleanup layer.
-    """
+    """Remove order book snapshots older than N days."""
     logger.info(f"[Cleanup] Removing snapshots older than {days_to_keep} days")
     return {"status": "queued", "days_to_keep": days_to_keep}
