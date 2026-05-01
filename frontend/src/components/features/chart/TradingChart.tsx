@@ -69,6 +69,7 @@ export function TradingChart() {
     const chart = chartRef.current
     if (!chart) return
 
+    let isMounted = true
     setIsLive(false)
 
     // Add new candlestick series
@@ -86,58 +87,82 @@ export function TradingChart() {
     let ws: WebSocket | null = null
 
     const initData = async () => {
-      // 1. Fetch initial historical data for the selected timeframe
-      const initialData = await fetchHistoricalData(timeframe)
-      if (initialData.length > 0) {
-        candlestickSeries.setData(initialData)
-      }
-
-      // 2. Connect to Binance live WebSocket for the selected timeframe
-      ws = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${timeframe}`)
-      
-      ws.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data)
-          const kline = message.k
-          
-          if (kline) {
-            const candle = {
-              time: (kline.t / 1000) as Time,
-              open: parseFloat(kline.o),
-              high: parseFloat(kline.h),
-              low: parseFloat(kline.l),
-              close: parseFloat(kline.c),
-            }
-            candlestickSeries.update(candle)
-            
-            // Temporary marker simulation for testing
-            if (kline.x && Math.random() > 0.95) {
-              const isBuy = Math.random() > 0.5
-              markersList.push({
-                time: candle.time,
-                position: isBuy ? 'belowBar' : 'aboveBar',
-                color: isBuy ? '#22c55e' : '#ef4444',
-                shape: isBuy ? 'arrowUp' : 'arrowDown',
-                text: isBuy ? 'Bot Buy' : 'Bot Sell',
-              })
-              markersPlugin.setMarkers(markersList)
-            }
-          }
-        } catch (e) {
-          console.error("Failed to parse WS message", e)
+      try {
+        // 1. Fetch initial historical data for the selected timeframe
+        const initialData = await fetchHistoricalData(timeframe)
+        if (!isMounted) return // Abort if component was unmounted or timeframe changed
+        
+        if (initialData.length > 0) {
+          candlestickSeries.setData(initialData)
         }
-      }
 
-      ws.onopen = () => setIsLive(true)
-      ws.onclose = () => setIsLive(false)
+        // 2. Connect to Binance live WebSocket for the selected timeframe
+        ws = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${timeframe}`)
+        
+        ws.onopen = () => {
+          if (isMounted) setIsLive(true)
+        }
+        
+        ws.onclose = () => {
+          if (isMounted) setIsLive(false)
+        }
+
+        ws.onerror = (error) => {
+          console.error("WebSocket Error:", error)
+          if (isMounted) setIsLive(false)
+        }
+        
+        ws.onmessage = (event) => {
+          if (!isMounted) return
+          try {
+            const message = JSON.parse(event.data)
+            const kline = message.k
+            
+            if (kline) {
+              const candle = {
+                time: (kline.t / 1000) as Time,
+                open: parseFloat(kline.o),
+                high: parseFloat(kline.h),
+                low: parseFloat(kline.l),
+                close: parseFloat(kline.c),
+              }
+              candlestickSeries.update(candle)
+              
+              // Temporary marker simulation for testing
+              if (kline.x && Math.random() > 0.95) {
+                const isBuy = Math.random() > 0.5
+                markersList.push({
+                  time: candle.time,
+                  position: isBuy ? 'belowBar' : 'aboveBar',
+                  color: isBuy ? '#22c55e' : '#ef4444',
+                  shape: isBuy ? 'arrowUp' : 'arrowDown',
+                  text: isBuy ? 'Bot Buy' : 'Bot Sell',
+                })
+                markersPlugin.setMarkers(markersList)
+              }
+            }
+          } catch (e) {
+            console.error("Failed to parse WS message", e)
+          }
+        }
+      } catch (err) {
+        console.error("Error in initData:", err)
+      }
     }
 
     initData()
 
     // Cleanup function when timeframe changes or component unmounts
     return () => {
-      if (ws) ws.close()
-      chart.removeSeries(candlestickSeries)
+      isMounted = false
+      if (ws) {
+        ws.close()
+      }
+      try {
+        chart.removeSeries(candlestickSeries)
+      } catch (e) {
+        // Series might have already been removed or chart destroyed
+      }
     }
   }, [timeframe])
 
