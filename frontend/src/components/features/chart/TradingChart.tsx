@@ -85,6 +85,7 @@ export function TradingChart() {
     const markersPlugin = createSeriesMarkers(candlestickSeries, markersList)
 
     let ws: WebSocket | null = null
+    let currentCandle: CandlestickData<Time> | null = null
 
     const initData = async () => {
       try {
@@ -94,10 +95,11 @@ export function TradingChart() {
         
         if (initialData.length > 0) {
           candlestickSeries.setData(initialData)
+          currentCandle = { ...initialData[initialData.length - 1] }
         }
 
-        // 2. Connect to Binance live WebSocket for the selected timeframe
-        ws = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${timeframe}`)
+        // 2. Connect to Binance live WebSocket (Combined Stream: Kline + AggTrades for tick-by-tick speed)
+        ws = new WebSocket(`wss://stream.binance.com:9443/stream?streams=btcusdt@kline_${timeframe}/btcusdt@aggTrade`)
         
         ws.onopen = () => {
           if (isMounted) setIsLive(true)
@@ -115,30 +117,52 @@ export function TradingChart() {
         ws.onmessage = (event) => {
           if (!isMounted) return
           try {
-            const message = JSON.parse(event.data)
-            const kline = message.k
+            const payload = JSON.parse(event.data)
+            const stream = payload.stream
+            const data = payload.data
             
-            if (kline) {
-              const candle = {
-                time: (kline.t / 1000) as Time,
-                open: parseFloat(kline.o),
-                high: parseFloat(kline.h),
-                low: parseFloat(kline.l),
-                close: parseFloat(kline.c),
+            if (stream === `btcusdt@kline_${timeframe}`) {
+              const kline = data.k
+              if (kline) {
+                currentCandle = {
+                  time: (kline.t / 1000) as Time,
+                  open: parseFloat(kline.o),
+                  high: parseFloat(kline.h),
+                  low: parseFloat(kline.l),
+                  close: parseFloat(kline.c),
+                }
+                candlestickSeries.update(currentCandle)
+                
+                // Temporary marker simulation for testing
+                if (kline.x && Math.random() > 0.95) {
+                  const isBuy = Math.random() > 0.5
+                  markersList.push({
+                    time: currentCandle.time,
+                    position: isBuy ? 'belowBar' : 'aboveBar',
+                    color: isBuy ? '#22c55e' : '#ef4444',
+                    shape: isBuy ? 'arrowUp' : 'arrowDown',
+                    text: isBuy ? 'Bot Buy' : 'Bot Sell',
+                  })
+                  markersPlugin.setMarkers(markersList)
+                }
               }
-              candlestickSeries.update(candle)
-              
-              // Temporary marker simulation for testing
-              if (kline.x && Math.random() > 0.95) {
-                const isBuy = Math.random() > 0.5
-                markersList.push({
-                  time: candle.time,
-                  position: isBuy ? 'belowBar' : 'aboveBar',
-                  color: isBuy ? '#22c55e' : '#ef4444',
-                  shape: isBuy ? 'arrowUp' : 'arrowDown',
-                  text: isBuy ? 'Bot Buy' : 'Bot Sell',
-                })
-                markersPlugin.setMarkers(markersList)
+            } else if (stream === 'btcusdt@aggTrade') {
+              // Real-time tick update to make the chart feel instantly responsive
+              if (currentCandle) {
+                const price = parseFloat(data.p)
+                const tradeTimeMs = data.T
+                const candleTimeMs = (currentCandle.time as number) * 1000
+                
+                // Only update the current candle if the trade belongs to it
+                if (tradeTimeMs >= candleTimeMs) {
+                  currentCandle = {
+                    ...currentCandle,
+                    close: price,
+                    high: Math.max(currentCandle.high, price),
+                    low: Math.min(currentCandle.low, price),
+                  }
+                  candlestickSeries.update(currentCandle)
+                }
               }
             }
           } catch (e) {
@@ -167,7 +191,7 @@ export function TradingChart() {
   }, [timeframe])
 
   return (
-    <Card className="flex flex-col h-[500px]">
+    <Card className="flex flex-col h-[700px]">
       <CardHeader className="py-3 px-4 shrink-0 border-b">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-sm font-medium flex items-center gap-3">

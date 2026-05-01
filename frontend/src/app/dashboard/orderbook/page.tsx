@@ -21,10 +21,10 @@ export default function OrderBookPage() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Left Side: Chart & Metrics (Takes 2/3 width on large screens) */}
         <div className="xl:col-span-2 flex flex-col gap-6">
-          <MLMetricsPanel />
           <TradingChart />
+          <MLMetricsPanel />
         </div>
-        
+
         {/* Right Side: Order Book (Takes 1/3 width on large screens) */}
         <div className="xl:col-span-1 h-full">
           <OrderBookContainer />

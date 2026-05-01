@@ -15,65 +15,64 @@ export function MLMetricsPanel() {
   }
 
   return (
-    <Card className="h-full">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <BrainCircuit className="h-5 w-5 text-primary" />
-            ML Model Metrics
-          </CardTitle>
-          <Badge variant="outline" className="text-xs font-mono bg-green-500/10 text-green-600 border-green-500/20">
-            ● MODEL ONLINE
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-          {/* Accuracy */}
-          <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-lg">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Target className="h-4 w-4" />
-              <span>Accuracy</span>
-            </div>
-            <div className="text-2xl font-bold">{metrics.accuracy}%</div>
+    <Card className="shadow-sm">
+      <CardContent className="p-3">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2 pr-4 border-r border-border/50 hidden md:flex">
+            <BrainCircuit className="h-4 w-4 text-primary" />
+            <span className="font-semibold text-sm">ML Engine</span>
+            <Badge variant="outline" className="text-[10px] h-5 px-1.5 ml-2 font-mono bg-green-500/10 text-green-600 border-green-500/20">
+              ● ONLINE
+            </Badge>
           </div>
 
-          {/* Confidence */}
-          <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-lg">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Activity className="h-4 w-4" />
-              <span>Confidence</span>
+          <div className="flex flex-1 items-center justify-around md:justify-between gap-4">
+            {/* Accuracy */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Target className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Accuracy:</span>
+              </div>
+              <div className="text-base font-bold">{metrics.accuracy}%</div>
             </div>
-            <div className="text-2xl font-bold text-blue-500">{metrics.confidence}%</div>
-          </div>
 
-          {/* Next Move */}
-          <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-lg">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              {metrics.prediction === "BUY" ? (
-                <TrendingUp className="h-4 w-4 text-green-500" />
-              ) : metrics.prediction === "SELL" ? (
-                <TrendingDown className="h-4 w-4 text-red-500" />
-              ) : (
-                <Activity className="h-4 w-4 text-yellow-500" />
-              )}
-              <span>Next Move</span>
+            {/* Confidence */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Activity className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Confidence:</span>
+              </div>
+              <div className="text-base font-bold text-blue-500">{metrics.confidence}%</div>
             </div>
-            <div className={`text-2xl font-bold ${
-              metrics.prediction === "BUY" ? "text-green-500" : 
-              metrics.prediction === "SELL" ? "text-red-500" : "text-yellow-500"
-            }`}>
-              {metrics.prediction}
-            </div>
-          </div>
 
-          {/* Latency */}
-          <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-lg">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Activity className="h-4 w-4" />
-              <span>Inference Time</span>
+            {/* Next Move */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                {metrics.prediction === "BUY" ? (
+                  <TrendingUp className="h-3.5 w-3.5 text-green-500" />
+                ) : metrics.prediction === "SELL" ? (
+                  <TrendingDown className="h-3.5 w-3.5 text-red-500" />
+                ) : (
+                  <Activity className="h-3.5 w-3.5 text-yellow-500" />
+                )}
+                <span className="hidden sm:inline">Action:</span>
+              </div>
+              <div className={`text-base font-bold ${
+                metrics.prediction === "BUY" ? "text-green-500" : 
+                metrics.prediction === "SELL" ? "text-red-500" : "text-yellow-500"
+              }`}>
+                {metrics.prediction}
+              </div>
             </div>
-            <div className="text-2xl font-bold font-mono">{metrics.latency}</div>
+
+            {/* Latency */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Activity className="h-3.5 w-3.5" />
+                <span className="hidden xl:inline">Latency:</span>
+              </div>
+              <div className="text-base font-bold font-mono">{metrics.latency}</div>
+            </div>
           </div>
         </div>
       </CardContent>

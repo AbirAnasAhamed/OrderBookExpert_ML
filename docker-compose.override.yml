@@ -1,0 +1,10 @@
+services:
+  frontend:
+    build:
+      target: dev          # Switches from Production to Development mode
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./frontend:/app    # Syncs your local code to the container instantly
+      - /app/node_modules  # Prevents local node_modules from overriding the container's
+      - /app/.next         # Keeps Next.js cache isolated in the container
